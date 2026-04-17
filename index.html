@@ -45,7 +45,7 @@ function loadFrame(token){
 
 if('serviceWorker' in navigator && 'PushManager' in window){
   window.addEventListener('load', function(){
-    navigator.serviceWorker.register('./firebase-messaging-sw.js')
+    navigator.serviceWorker.register('/thn-guild/firebase-messaging-sw.js')
       .then(function(reg){ loadFirebaseScripts(reg); })
       .catch(function(e){ console.log('SW error:', e); loadFrame(''); });
   });
