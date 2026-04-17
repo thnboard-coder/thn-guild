@@ -38,6 +38,23 @@ function loadFrame(token) {
   document.getElementById('frame').src = url;
 }
 
+setTimeout(function() {
+  var loadingDiv = document.getElementById('loading');
+  if (loadingDiv && loadingDiv.style.display !== 'none') {
+    loadingDiv.innerHTML += `
+      <div style="margin-top:20px; text-align:center;">
+        <p style="color:#aaa; font-size:13px; margin-bottom:15px; line-height:1.5;">
+          iPhone users may experience blocked screens<br>due to browser security policies.
+        </p>
+        <a href="${APPS_SCRIPT_URL}" target="_blank" 
+           style="background:#3b82f6; color:white; text-decoration:none; padding:12px 24px; border-radius:8px; font-weight:bold; display:inline-block; font-family:sans-serif;">
+           Direct Access
+        </a>
+      </div>
+    `;
+  }
+}, 5000);
+
 firebase.initializeApp({
   apiKey: "AIzaSyC2II3ydXUE2CRJWtYTx5yf0W4kxT8qgrs",
   authDomain: "thn-guild.firebaseapp.com",
@@ -47,27 +64,28 @@ firebase.initializeApp({
   appId: "1:130528607870:web:c0d477110c5a183270e22f"
 });
 
-var messaging = firebase.messaging();
-
-Notification.requestPermission().then(function(perm) {
-  if(perm !== 'granted') { loadFrame(''); return; }
-  return messaging.getToken({vapidKey: VAPID_KEY});
-}).then(function(token) {
-  if(!token) { loadFrame(''); return; }
-  console.log('FCM token:', token);
-  localStorage.setItem('thn_fcm_token', token);
-  loadFrame(token);
-}).catch(function(e) {
-  console.log('FCM error:', e);
+if (!('Notification' in window)) {
   loadFrame('');
-});
-
-messaging.onMessage(function(payload) {
-  new Notification(payload.notification.title, {
-    body: payload.notification.body,
-    vibrate: [300,100,300]
+} else {
+  var messaging = firebase.messaging();
+  Notification.requestPermission().then(function(perm) {
+    if(perm !== 'granted') { loadFrame(''); return; }
+    return messaging.getToken({vapidKey: VAPID_KEY});
+  }).then(function(token) {
+    if(!token) { loadFrame(''); return; }
+    localStorage.setItem('thn_fcm_token', token);
+    loadFrame(token);
+  }).catch(function(e) {
+    loadFrame('');
   });
-});
+
+  messaging.onMessage(function(payload) {
+    new Notification(payload.notification.title, {
+      body: payload.notification.body,
+      vibrate: [300,100,300]
+    });
+  });
+}
 </script>
 </body>
 </html>
