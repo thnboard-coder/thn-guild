@@ -18,9 +18,23 @@ html,body{width:100%;height:100%;overflow:hidden;background:#080c14;}
 .dot:nth-child(2){animation-delay:.15s;}
 .dot:nth-child(3){animation-delay:.3s;}
 @keyframes dp{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
+#ios-prompt{display:none;position:fixed;inset:0;background:rgba(8,12,20,0.98);z-index:10000;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;color:#fff;font-family:sans-serif;}
+.ios-step{background:#1e293b;padding:16px;border-radius:12px;margin-bottom:12px;width:100%;max-width:320px;text-align:left;font-size:14px;line-height:1.5;border:1px solid #334155;}
+.ios-step b{color:#3b82f6;}
+.ios-close{margin-top:24px;background:transparent;border:1px solid #64748b;color:#cbd5e1;padding:10px 30px;border-radius:8px;cursor:pointer;font-size:14px;}
 </style>
 </head>
 <body>
+<div id="ios-prompt">
+  <h2 style="margin-bottom:16px;font-size:20px;">📱 iOS Setup Required</h2>
+  <p style="margin-bottom:24px;font-size:14px;color:#94a3b8;max-width:320px;">To receive alarms and ensure the dashboard works properly, please add this page to your Home Screen.</p>
+  <div class="ios-step">1. Open this link in <b>Safari</b>.</div>
+  <div class="ios-step">2. Tap the <b>Share</b> icon at the bottom.</div>
+  <div class="ios-step">3. Scroll down and tap <b>Add to Home Screen</b>.</div>
+  <div class="ios-step">4. Open the <b>THN Guild</b> app from your home screen.</div>
+  <button class="ios-close" onclick="localStorage.setItem('hide_ios_prompt','true'); document.getElementById('ios-prompt').style.display='none'; loadFrame('');">Close</button>
+</div>
+
 <div id="loading">
   <div class="logo">⚔️</div>
   <div class="title"><span>THN</span> GUILD</div>
@@ -38,53 +52,61 @@ function loadFrame(token) {
   document.getElementById('frame').src = url;
 }
 
-setTimeout(function() {
-  var loadingDiv = document.getElementById('loading');
-  if (loadingDiv && loadingDiv.style.display !== 'none') {
-    loadingDiv.innerHTML += `
-      <div style="margin-top:20px; text-align:center;">
-        <p style="color:#aaa; font-size:13px; margin-bottom:15px; line-height:1.5;">
-          iPhone users may experience blocked screens<br>due to browser security policies.
-        </p>
-        <a href="${APPS_SCRIPT_URL}" target="_blank" 
-           style="background:#3b82f6; color:white; text-decoration:none; padding:12px 24px; border-radius:8px; font-weight:bold; display:inline-block; font-family:sans-serif;">
-           Direct Access
-        </a>
-      </div>
-    `;
-  }
-}, 5000);
+var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+var isStandalone = window.navigator.standalone === true;
+var hidePrompt = localStorage.getItem('hide_ios_prompt');
 
-firebase.initializeApp({
-  apiKey: "AIzaSyC2II3ydXUE2CRJWtYTx5yf0W4kxT8qgrs",
-  authDomain: "thn-guild.firebaseapp.com",
-  projectId: "thn-guild",
-  storageBucket: "thn-guild.firebasestorage.app",
-  messagingSenderId: "130528607870",
-  appId: "1:130528607870:web:c0d477110c5a183270e22f"
-});
-
-if (!('Notification' in window)) {
-  loadFrame('');
+if (isIOS && !isStandalone && !hidePrompt) {
+  document.getElementById('ios-prompt').style.display = 'flex';
 } else {
-  var messaging = firebase.messaging();
-  Notification.requestPermission().then(function(perm) {
-    if(perm !== 'granted') { loadFrame(''); return; }
-    return messaging.getToken({vapidKey: VAPID_KEY});
-  }).then(function(token) {
-    if(!token) { loadFrame(''); return; }
-    localStorage.setItem('thn_fcm_token', token);
-    loadFrame(token);
-  }).catch(function(e) {
-    loadFrame('');
+  setTimeout(function() {
+    var loadingDiv = document.getElementById('loading');
+    if (loadingDiv && loadingDiv.style.display !== 'none') {
+      loadingDiv.innerHTML += `
+        <div style="margin-top:20px; text-align:center;">
+          <p style="color:#aaa; font-size:13px; margin-bottom:15px; line-height:1.5;">
+            iPhone users may experience blocked screens<br>due to browser security policies.
+          </p>
+          <a href="${APPS_SCRIPT_URL}" target="_blank" 
+             style="background:#3b82f6; color:white; text-decoration:none; padding:12px 24px; border-radius:8px; font-weight:bold; display:inline-block; font-family:sans-serif;">
+             Direct Access
+          </a>
+        </div>
+      `;
+    }
+  }, 5000);
+
+  firebase.initializeApp({
+    apiKey: "AIzaSyC2II3ydXUE2CRJWtYTx5yf0W4kxT8qgrs",
+    authDomain: "thn-guild.firebaseapp.com",
+    projectId: "thn-guild",
+    storageBucket: "thn-guild.firebasestorage.app",
+    messagingSenderId: "130528607870",
+    appId: "1:130528607870:web:c0d477110c5a183270e22f"
   });
 
-  messaging.onMessage(function(payload) {
-    new Notification(payload.notification.title, {
-      body: payload.notification.body,
-      vibrate: [300,100,300]
+  if (!('Notification' in window)) {
+    loadFrame('');
+  } else {
+    var messaging = firebase.messaging();
+    Notification.requestPermission().then(function(perm) {
+      if(perm !== 'granted') { loadFrame(''); return; }
+      return messaging.getToken({vapidKey: VAPID_KEY});
+    }).then(function(token) {
+      if(!token) { loadFrame(''); return; }
+      localStorage.setItem('thn_fcm_token', token);
+      loadFrame(token);
+    }).catch(function(e) {
+      loadFrame('');
     });
-  });
+
+    messaging.onMessage(function(payload) {
+      new Notification(payload.notification.title, {
+        body: payload.notification.body,
+        vibrate: [300,100,300]
+      });
+    });
+  }
 }
 </script>
 </body>
