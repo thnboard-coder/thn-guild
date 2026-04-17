@@ -20,17 +20,15 @@ html,body{width:100%;height:100%;overflow:hidden;background:#080c14;}
 </style>
 </head>
 <body>
-
 <div id="loading">
   <div class="logo">⚔️</div>
   <div class="title"><span>THN</span> GUILD</div>
   <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
 </div>
-
-<iframe id="frame" src="https://script.google.com/macros/s/AKfycbza2304Du2b1bTOShyTilo8-4_f0pYwwjHyIeHb-gNwfHlY5akIZL7KG2q4ozocMCtU5A/exec" onload="document.getElementById('loading').style.display='none'"></iframe>
-
+<iframe id="frame" onload="document.getElementById('loading').style.display='none'"></iframe>
 <script>
 var VAPID_KEY = 'BCGpoAX-PwnYqlxKzKiozihCw-GuPNOhpOh3bCeMXHYsKHxMjBjjnJvAP__nF1D-9GgsnS1L7zG3x_aEvOdgCHI';
+var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbza2304Du2b1bTOShyTilo8-4_f0pYwwjHyIeHb-gNwfHlY5akIZL7KG2q4ozocMCtU5A/exec';
 var FIREBASE_CONFIG = {
   apiKey: "AIzaSyC2II3ydXUE2CRJWtYTx5yf0W4kxT8qgrs",
   authDomain: "thn-guild.firebaseapp.com",
@@ -40,16 +38,21 @@ var FIREBASE_CONFIG = {
   appId: "1:130528607870:web:c0d477110c5a183270e22f"
 };
 
-// Service Worker 등록 및 FCM 초기화
 if('serviceWorker' in navigator && 'PushManager' in window){
   window.addEventListener('load', function(){
     navigator.serviceWorker.register('./firebase-messaging-sw.js')
       .then(function(reg){
-        console.log('SW registered');
         loadFirebase(reg);
       })
-      .catch(function(e){ console.log('SW error:', e); });
+      .catch(function(e){ console.log('SW error:', e); loadFrame(''); });
   });
+} else {
+  loadFrame('');
+}
+
+function loadFrame(token){
+  var url = token ? APPS_SCRIPT_URL + '?fcm_token=' + encodeURIComponent(token) : APPS_SCRIPT_URL;
+  document.getElementById('frame').src = url;
 }
 
 function loadFirebase(swReg){
@@ -67,23 +70,16 @@ function loadFirebase(swReg){
 function initFCM(swReg){
   firebase.initializeApp(FIREBASE_CONFIG);
   var messaging = firebase.messaging();
-
   Notification.requestPermission().then(function(perm){
-    if(perm !== 'granted') return;
+    if(perm !== 'granted'){ loadFrame(''); return; }
     messaging.getToken({vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg})
       .then(function(token){
-        if(token){
-          localStorage.setItem('thn_fcm_token', token);
-          // iframe(Apps Script)으로 토큰 전달
-          document.getElementById('frame').contentWindow.postMessage({type:'fcm_token', token:token}, '*');
-          // Apps Script 서버에 토큰 저장은 iframe에서 처리
-        }
+        localStorage.setItem('thn_fcm_token', token||'');
+        loadFrame(token||'');
       })
-      .catch(function(e){ console.log('FCM token error:', e); });
+      .catch(function(e){ console.log('FCM error:', e); loadFrame(''); });
   });
-
   messaging.onMessage(function(payload){
-    // 포그라운드에서 받은 메시지 처리
     new Notification(payload.notification.title, {
       body: payload.notification.body,
       vibrate: [300,100,300]
