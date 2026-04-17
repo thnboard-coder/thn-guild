@@ -28,7 +28,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#080c14;}
 <iframe id="frame" onload="document.getElementById('loading').style.display='none'"></iframe>
 <script>
 var VAPID_KEY = 'BCGpoAX-PwnYqlxKzKiozihCw-GuPNOhpOh3bCeMXHYsKHxMjBjjnJvAP__nF1D-9GgsnS1L7zG3x_aEvOdgCHI';
-var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwl_gP7GPIt1qoTOxkAeY-ON8YZGahgKlHUdw-OYUuju5bmaSFWKSyuV2KoiF2wzzaZFA/exec';
+var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxOtLmVmB0l5nbCl3mzDmTdTcC7l4x0ssjx8pHsxkiRFwLmIEfREDNVn0m9nczxBu465w/exec';
 var FIREBASE_CONFIG = {
   apiKey: "AIzaSyC2II3ydXUE2CRJWtYTx5yf0W4kxT8qgrs",
   authDomain: "thn-guild.firebaseapp.com",
@@ -38,30 +38,33 @@ var FIREBASE_CONFIG = {
   appId: "1:130528607870:web:c0d477110c5a183270e22f"
 };
 
+function loadFrame(token){
+  var url = token ? APPS_SCRIPT_URL + '?fcm_token=' + encodeURIComponent(token) : APPS_SCRIPT_URL;
+  document.getElementById('frame').src = url;
+}
+
 if('serviceWorker' in navigator && 'PushManager' in window){
   window.addEventListener('load', function(){
     navigator.serviceWorker.register('./firebase-messaging-sw.js')
-      .then(function(reg){
-        loadFirebase(reg);
-      })
+      .then(function(reg){ loadFirebaseScripts(reg); })
       .catch(function(e){ console.log('SW error:', e); loadFrame(''); });
   });
 } else {
   loadFrame('');
 }
 
-function loadFrame(token){
-  var url = token ? APPS_SCRIPT_URL + '?fcm_token=' + encodeURIComponent(token) : APPS_SCRIPT_URL;
-  document.getElementById('frame').src = url;
-}
-
-function loadFirebase(swReg){
+function loadFirebaseScripts(swReg){
   var s1 = document.createElement('script');
   s1.src = 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js';
   s1.onload = function(){
     var s2 = document.createElement('script');
     s2.src = 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js';
-    s2.onload = function(){ initFCM(swReg); };
+    s2.onload = function(){
+      var s3 = document.createElement('script');
+      s3.src = 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js';
+      s3.onload = function(){ initFCM(swReg); };
+      document.head.appendChild(s3);
+    };
     document.head.appendChild(s2);
   };
   document.head.appendChild(s1);
@@ -70,15 +73,20 @@ function loadFirebase(swReg){
 function initFCM(swReg){
   firebase.initializeApp(FIREBASE_CONFIG);
   var messaging = firebase.messaging();
-  Notification.requestPermission().then(function(perm){
+  firebase.auth().signInAnonymously().then(function(){
+    return Notification.requestPermission();
+  }).then(function(perm){
     if(perm !== 'granted'){ loadFrame(''); return; }
-    messaging.getToken({vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg})
-      .then(function(token){
-        localStorage.setItem('thn_fcm_token', token||'');
-        loadFrame(token||'');
-      })
-      .catch(function(e){ console.log('FCM error:', e); loadFrame(''); });
-  });
+    return messaging.getToken({vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg});
+  })
+  .then(function(token){
+    if(!token){ loadFrame(''); return; }
+    console.log('FCM token:', token);
+    localStorage.setItem('thn_fcm_token', token);
+    loadFrame(token);
+  })
+  .catch(function(e){ console.log('FCM error:', e); loadFrame(''); });
+
   messaging.onMessage(function(payload){
     new Notification(payload.notification.title, {
       body: payload.notification.body,
