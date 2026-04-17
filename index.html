@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<link rel="icon" href="data:,">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>THN Guild Dashboard</title>
@@ -26,74 +27,47 @@ html,body{width:100%;height:100%;overflow:hidden;background:#080c14;}
   <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
 </div>
 <iframe id="frame" onload="document.getElementById('loading').style.display='none'"></iframe>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
 <script>
-var VAPID_KEY = 'BCGpoAX-PwnYqlxKzKiozihCw-GuPNOhpOh3bCeMXHYsKHxMjBjjnJvAP__nF1D-9GgsnS1L7zG3x_aEvOdgCHI';
+var VAPID_KEY = 'BCGpoAX-PwnYqlxKzKiozihCw-GuPNOhp0h3bCeMXHYsKHxMjBjjnJvAP__nF1D-9GgsnS1L7zG3x_aEv0dgCHI';
 var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxOtLmVmB0l5nbCl3mzDmTdTcC7l4x0ssjx8pHsxkiRFwLmIEfREDNVn0m9nczxBu465w/exec';
-var FIREBASE_CONFIG = {
+
+function loadFrame(token) {
+  var url = token ? APPS_SCRIPT_URL + '?fcm_token=' + encodeURIComponent(token) : APPS_SCRIPT_URL;
+  document.getElementById('frame').src = url;
+}
+
+firebase.initializeApp({
   apiKey: "AIzaSyC2II3ydXUE2CRJWtYTx5yf0W4kxT8qgrs",
   authDomain: "thn-guild.firebaseapp.com",
   projectId: "thn-guild",
   storageBucket: "thn-guild.firebasestorage.app",
   messagingSenderId: "130528607870",
   appId: "1:130528607870:web:c0d477110c5a183270e22f"
-};
+});
 
-function loadFrame(token){
-  var url = token ? APPS_SCRIPT_URL + '?fcm_token=' + encodeURIComponent(token) : APPS_SCRIPT_URL;
-  document.getElementById('frame').src = url;
-}
+var messaging = firebase.messaging();
 
-if('serviceWorker' in navigator && 'PushManager' in window){
-  window.addEventListener('load', function(){
-    navigator.serviceWorker.register('./firebase-messaging-sw.js')
-      .then(function(reg){ loadFirebaseScripts(reg); })
-      .catch(function(e){ console.log('SW error:', e); loadFrame(''); });
-  });
-} else {
+Notification.requestPermission().then(function(perm) {
+  if(perm !== 'granted') { loadFrame(''); return; }
+  return messaging.getToken({vapidKey: VAPID_KEY});
+}).then(function(token) {
+  if(!token) { loadFrame(''); return; }
+  console.log('FCM token:', token);
+  localStorage.setItem('thn_fcm_token', token);
+  loadFrame(token);
+}).catch(function(e) {
+  console.log('FCM error:', e);
   loadFrame('');
-}
+});
 
-function loadFirebaseScripts(swReg){
-  var s1 = document.createElement('script');
-  s1.src = 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js';
-  s1.onload = function(){
-    var s2 = document.createElement('script');
-    s2.src = 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js';
-    s2.onload = function(){
-      var s3 = document.createElement('script');
-      s3.src = 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js';
-      s3.onload = function(){ initFCM(swReg); };
-      document.head.appendChild(s3);
-    };
-    document.head.appendChild(s2);
-  };
-  document.head.appendChild(s1);
-}
-
-function initFCM(swReg){
-  firebase.initializeApp(FIREBASE_CONFIG);
-  var messaging = firebase.messaging();
-  firebase.auth().signInAnonymously().then(function(){
-    return Notification.requestPermission();
-  }).then(function(perm){
-    if(perm !== 'granted'){ loadFrame(''); return; }
-    return messaging.getToken({vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg});
-  })
-  .then(function(token){
-    if(!token){ loadFrame(''); return; }
-    console.log('FCM token:', token);
-    localStorage.setItem('thn_fcm_token', token);
-    loadFrame(token);
-  })
-  .catch(function(e){ console.log('FCM error:', e); loadFrame(''); });
-
-  messaging.onMessage(function(payload){
-    new Notification(payload.notification.title, {
-      body: payload.notification.body,
-      vibrate: [300,100,300]
-    });
+messaging.onMessage(function(payload) {
+  new Notification(payload.notification.title, {
+    body: payload.notification.body,
+    vibrate: [300,100,300]
   });
-}
+});
 </script>
 </body>
 </html>
