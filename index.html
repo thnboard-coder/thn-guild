@@ -81,28 +81,40 @@ if (isIOS && !isStandalone && !hidePrompt) {
     appId: "1:130528607870:web:c0d477110c5a183270e22f"
   });
 
+  // iOS 16.4 미만 버전 예외 처리 (알림 기능 미지원)
   if (!('Notification' in window)) {
+    if (isIOS && isStandalone) {
+      alert("⚠️ 아이폰 웹 푸시 알람은 iOS 16.4 버전 이상에서만 지원됩니다.\n기기 소프트웨어를 업데이트해 주세요.");
+    } else {
+      console.warn("Notifications not supported on this browser.");
+    }
     loadFrame('');
   } else {
     var messaging = firebase.messaging();
 
     window.requestPushPermission = function() {
-      document.getElementById('push-prompt').style.display = 'none';
       Notification.requestPermission().then(function(perm) {
-        if(perm !== 'granted') { loadFrame(''); return; }
-        return navigator.serviceWorker.register('/thn-guild/firebase-messaging-sw.js');
-      }).then(function(registration) {
-        return messaging.getToken({vapidKey: VAPID_KEY, serviceWorkerRegistration: registration});
-      }).then(function(token) {
-        if(token) { localStorage.setItem('thn_fcm_token', token); loadFrame(token); }
-        else { loadFrame(''); }
-      }).catch(function(e) {
-        console.error('Token error:', e);
-        loadFrame('');
+        document.getElementById('push-prompt').style.display = 'none';
+        if(perm !== 'granted') { 
+          alert("알림 권한이 거부되었습니다.\n기기 설정에서 알림을 허용해주세요.");
+          loadFrame(''); 
+          return; 
+        }
+        navigator.serviceWorker.register('/thn-guild/firebase-messaging-sw.js')
+        .then(function(registration) {
+          return messaging.getToken({vapidKey: VAPID_KEY, serviceWorkerRegistration: registration});
+        }).then(function(token) {
+          if(token) { localStorage.setItem('thn_fcm_token', token); loadFrame(token); }
+          else { loadFrame(''); }
+        }).catch(function(e) {
+          console.error('Token error:', e);
+          loadFrame('');
+        });
       });
     };
 
-    if (Notification.permission === 'default') {
+    // 알림 권한이 없거나, 앱(Standalone)인데 토큰 발급 이력이 없으면 무조건 프롬프트 표시
+    if (Notification.permission === 'default' || (isStandalone && !localStorage.getItem('thn_fcm_token'))) {
       document.getElementById('push-prompt').style.display = 'flex';
     } else if (Notification.permission === 'granted') {
       navigator.serviceWorker.register('/thn-guild/firebase-messaging-sw.js').then(function(registration) {
@@ -119,24 +131,33 @@ if (isIOS && !isStandalone && !hidePrompt) {
     }
 
     messaging.onMessage(function(payload) {
-});
+      // 포그라운드 메시지 수신 처리 로직
+      console.log('Message received. ', payload);
+    });
 
     var _notifTimer = null;
     function showNotifOverlay(title, body) {
-      document.getElementById('notif-ov-title').textContent = title || 'THN Guild';
-      document.getElementById('notif-ov-body').textContent = body || '';
+      var ovTitle = document.getElementById('notif-ov-title');
+      var ovBody = document.getElementById('notif-ov-body');
+      if (ovTitle) ovTitle.textContent = title || 'THN Guild';
+      if (ovBody) ovBody.textContent = body || '';
       var ov = document.getElementById('notif-overlay');
       var card = document.getElementById('notif-card');
-      ov.style.display = 'block';
-      setTimeout(function(){ card.style.transform = 'translateY(0)'; }, 10);
-      if(_notifTimer) clearTimeout(_notifTimer);
-      _notifTimer = setTimeout(closeNotifOverlay, 6000);
-      if(navigator.vibrate) navigator.vibrate([300,100,300]);
+      if (ov && card) {
+        ov.style.display = 'block';
+        setTimeout(function(){ card.style.transform = 'translateY(0)'; }, 10);
+        if(_notifTimer) clearTimeout(_notifTimer);
+        _notifTimer = setTimeout(closeNotifOverlay, 6000);
+        if(navigator.vibrate) navigator.vibrate([300,100,300]);
+      }
     }
     function closeNotifOverlay() {
       var card = document.getElementById('notif-card');
-      card.style.transform = 'translateY(-100%)';
-      setTimeout(function(){ document.getElementById('notif-overlay').style.display = 'none'; }, 400);
+      var ov = document.getElementById('notif-overlay');
+      if (card && ov) {
+        card.style.transform = 'translateY(-100%)';
+        setTimeout(function(){ ov.style.display = 'none'; }, 400);
+      }
     }
   }
 }
