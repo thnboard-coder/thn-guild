@@ -13,15 +13,23 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage(function(payload) {
-  const title = (payload.data && payload.data.title) || payload.notification && payload.notification.title || 'THN Guild';
-  const body  = (payload.data && payload.data.body)  || payload.notification && payload.notification.body  || '';
-  self.registration.showNotification(title, {
-    body: body,
-    icon: '/thn-guild/icon.png',
-    badge: '/thn-guild/icon.png',
-    vibrate: [300,100,300,100,300],
-    requireInteraction: true,
-    tag: 'thn-alert',
-    renotify: true
+  const title = (payload.data && payload.data.title) || (payload.notification && payload.notification.title) || 'THN Guild';
+  const body  = (payload.data && payload.data.body)  || (payload.notification && payload.notification.body)  || '';
+  self.clients.matchAll({type:'window',includeUncontrolled:true}).then(function(clients){
+    if(clients && clients.length > 0) return;
+    self.registration.showNotification(title, {
+      body: body,
+      icon: '/thn-guild/icon.png',
+      badge: '/thn-guild/icon.png',
+      vibrate: [300,100,300,100,300],
+      requireInteraction: true,
+      tag: 'thn-alert',
+      renotify: true
+    });
   });
+});
+
+self.addEventListener('notificationclick', function(e){
+  e.notification.close();
+  e.waitUntil(clients.openWindow('/thn-guild/'));
 });
