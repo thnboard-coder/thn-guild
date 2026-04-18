@@ -22,7 +22,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#080c14;}
 .dot:nth-child(2){animation-delay:.15s;}
 .dot:nth-child(3){animation-delay:.3s;}
 @keyframes dp{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
-#ios-prompt, #push-prompt{display:none;position:fixed;inset:0;background:rgba(8,12,20,0.98);z-index:10000;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;color:#fff;font-family:sans-serif;}
+#ios-prompt,#push-prompt{display:none;position:fixed;inset:0;background:rgba(8,12,20,0.98);z-index:10000;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;color:#fff;font-family:sans-serif;}
 .ios-step{background:#1e293b;padding:16px;border-radius:12px;margin-bottom:12px;width:100%;max-width:320px;text-align:left;font-size:14px;line-height:1.5;border:1px solid #334155;}
 .ios-step b{color:#3b82f6;}
 .action-btn{margin-top:24px;background:#3b82f6;border:none;color:white;padding:14px 32px;border-radius:8px;cursor:pointer;font-size:16px;font-weight:bold;}
@@ -37,13 +37,13 @@ html,body{width:100%;height:100%;overflow:hidden;background:#080c14;}
   <div class="ios-step">2. Tap the <b>Share</b> icon at the bottom.</div>
   <div class="ios-step">3. Scroll down and tap <b>Add to Home Screen</b>.</div>
   <div class="ios-step">4. Open the <b>THN Guild</b> app from your home screen.</div>
-  <button class="action-btn" onclick="localStorage.setItem('hide_ios_prompt','true'); document.getElementById('ios-prompt').style.display='none'; loadFrame('');" style="background:transparent; border:1px solid #64748b; color:#cbd5e1;">Close</button>
+  <button class="action-btn" onclick="localStorage.setItem('hide_ios_prompt','true');document.getElementById('ios-prompt').style.display='none';loadFrame('');" style="background:transparent;border:1px solid #64748b;color:#cbd5e1;">Close</button>
 </div>
 
 <div id="push-prompt">
-  <h2 style="margin-bottom:16px;font-size:20px;">🔔 알림 권한 허용</h2>
-  <p style="margin-bottom:24px;font-size:14px;color:#94a3b8;max-width:320px;">레이드 및 타이머 알람을 받으려면 아래 버튼을 눌러주세요.</p>
-  <button class="action-btn" onclick="requestPushPermission()">알림 켜기 (Enable)</button>
+  <h2 style="margin-bottom:16px;font-size:20px;">🔔 Enable Notifications</h2>
+  <p style="margin-bottom:24px;font-size:14px;color:#94a3b8;max-width:320px;">Enable notifications to receive raid and timer alerts.</p>
+  <button class="action-btn" onclick="requestPushPermission()">Enable Alerts</button>
 </div>
 
 <div id="loading">
@@ -51,7 +51,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#080c14;}
   <div class="title"><span>THN</span> GUILD</div>
   <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
 </div>
-  <div id="notif-overlay" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99999;padding:16px;pointer-events:none;">
+
+<div id="notif-overlay" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99999;padding:16px;pointer-events:none;">
   <div id="notif-card" style="background:#1a2235;border:1px solid #3b82f6;border-radius:16px;padding:18px 20px;max-width:480px;margin:0 auto;box-shadow:0 8px 40px rgba(0,0,0,0.7);pointer-events:all;transform:translateY(-100%);transition:transform 0.4s cubic-bezier(0.16,1,0.3,1);">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
       <span style="font-size:22px;">⚔️</span>
@@ -61,6 +62,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#080c14;}
     <div id="notif-ov-body" style="font-family:sans-serif;font-size:14px;color:#8097b8;line-height:1.5;"></div>
   </div>
 </div>
+
 <iframe id="frame" onload="document.getElementById('loading').style.display='none'"></iframe>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -99,70 +101,61 @@ if (isIOS && !isStandalone && !hidePrompt) {
       document.getElementById('push-prompt').style.display = 'none';
       Notification.requestPermission().then(function(perm) {
         if(perm !== 'granted') { loadFrame(''); return; }
-        return navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        return navigator.serviceWorker.register('/thn-guild/firebase-messaging-sw.js');
       }).then(function(registration) {
         return messaging.getToken({vapidKey: VAPID_KEY, serviceWorkerRegistration: registration});
       }).then(function(token) {
-  if(token) {
-    localStorage.setItem('thn_fcm_token', token);
-    alert('TOKEN OK: ' + token.substring(0,20));
-    loadFrame(token);
-  } else {
-    alert('NO TOKEN');
-    loadFrame('');
-  }
-}).catch(function(e) {
-  alert('ERROR: ' + e.message);
-  loadFrame('');
-});
+        if(token) { localStorage.setItem('thn_fcm_token', token); loadFrame(token); }
+        else { loadFrame(''); }
+      }).catch(function(e) {
+        console.error('Token error:', e);
+        loadFrame('');
+      });
+    };
 
     if (Notification.permission === 'default') {
       document.getElementById('push-prompt').style.display = 'flex';
     } else if (Notification.permission === 'granted') {
-      navigator.serviceWorker.register('/firebase-messaging-sw.js').then(function(registration) {
+      navigator.serviceWorker.register('/thn-guild/firebase-messaging-sw.js').then(function(registration) {
         return messaging.getToken({vapidKey: VAPID_KEY, serviceWorkerRegistration: registration});
       }).then(function(token) {
-  if(token) {
-    localStorage.setItem('thn_fcm_token', token);
-    document.title = 'OK:'+token.substring(0,10);
-    loadFrame(token);
-  } else {
-    document.title = 'NO TOKEN';
-    loadFrame('');
-  }
-}).catch(function(e) {
-  document.title = 'ERR:'+e.message;
-  loadFrame('');
-});
+        if(token) { localStorage.setItem('thn_fcm_token', token); loadFrame(token); }
+        else { loadFrame(''); }
+      }).catch(function(e) {
+        console.error('Token error:', e);
+        loadFrame('');
+      });
     } else {
       loadFrame('');
     }
 
     messaging.onMessage(function(payload) {
-  showNotifOverlay(payload.notification.title, payload.notification.body);
-  var frame = document.getElementById('frame');
-  if(frame && frame.contentWindow) {
-    frame.contentWindow.postMessage({type:'fcm_notification', title:payload.notification.title, body:payload.notification.body}, '*');
-  }
-});
+      var title = (payload.notification && payload.notification.title) || (payload.data && payload.data.title) || 'THN Guild';
+      var body = (payload.notification && payload.notification.body) || (payload.data && payload.data.body) || '';
+      showNotifOverlay(title, body);
+      var frame = document.getElementById('frame');
+      if(frame && frame.contentWindow) {
+        frame.contentWindow.postMessage({type:'fcm_notification', title:title, body:body}, '*');
+      }
+    });
 
-var _notifTimer = null;
-function showNotifOverlay(title, body) {
-  document.getElementById('notif-ov-title').textContent = title || 'THN Guild';
-  document.getElementById('notif-ov-body').textContent = body || '';
-  var ov = document.getElementById('notif-overlay');
-  var card = document.getElementById('notif-card');
-  ov.style.display = 'block';
-  setTimeout(function(){ card.style.transform = 'translateY(0)'; }, 10);
-  if(_notifTimer) clearTimeout(_notifTimer);
-  _notifTimer = setTimeout(closeNotifOverlay, 6000);
-  if(navigator.vibrate) navigator.vibrate([300,100,300]);
-}
-function closeNotifOverlay() {
-  var card = document.getElementById('notif-card');
-  card.style.transform = 'translateY(-100%)';
-  setTimeout(function(){ document.getElementById('notif-overlay').style.display = 'none'; }, 400);
-}
+    var _notifTimer = null;
+    function showNotifOverlay(title, body) {
+      document.getElementById('notif-ov-title').textContent = title || 'THN Guild';
+      document.getElementById('notif-ov-body').textContent = body || '';
+      var ov = document.getElementById('notif-overlay');
+      var card = document.getElementById('notif-card');
+      ov.style.display = 'block';
+      setTimeout(function(){ card.style.transform = 'translateY(0)'; }, 10);
+      if(_notifTimer) clearTimeout(_notifTimer);
+      _notifTimer = setTimeout(closeNotifOverlay, 6000);
+      if(navigator.vibrate) navigator.vibrate([300,100,300]);
+    }
+    function closeNotifOverlay() {
+      var card = document.getElementById('notif-card');
+      card.style.transform = 'translateY(-100%)';
+      setTimeout(function(){ document.getElementById('notif-overlay').style.display = 'none'; }, 400);
+    }
   }
 }
 </script>
