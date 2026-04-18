@@ -13,13 +13,15 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage(function(payload) {
-  const notification = payload.notification || payload.data || {};
-  const title = notification.title || 'THN Guild';
-  const body  = notification.body  || '';
-  return self.registration.showNotification(title, {
-    body: body,
-    icon: '/icon.png',
-    vibrate: [300,100,300,100,300],
-    requireInteraction: false
-  });
+  const title = (payload.data && payload.data.title) || payload.notification && payload.notification.title || 'THN Guild';
+  const body  = (payload.data && payload.data.body)  || payload.notification && payload.notification.body  || '';
+  self.registration.showNotification(title, {
+    body: body,
+    icon: '/thn-guild/icon.png',
+    badge: '/thn-guild/icon.png',
+    vibrate: [300,100,300,100,300],
+    requireInteraction: true,
+    tag: 'thn-alert',
+    renotify: true
+  });
 });
