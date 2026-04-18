@@ -51,6 +51,16 @@ html,body{width:100%;height:100%;overflow:hidden;background:#080c14;}
   <div class="title"><span>THN</span> GUILD</div>
   <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
 </div>
+  <div id="notif-overlay" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99999;padding:16px;pointer-events:none;">
+  <div id="notif-card" style="background:#1a2235;border:1px solid #3b82f6;border-radius:16px;padding:18px 20px;max-width:480px;margin:0 auto;box-shadow:0 8px 40px rgba(0,0,0,0.7);pointer-events:all;transform:translateY(-100%);transition:transform 0.4s cubic-bezier(0.16,1,0.3,1);">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+      <span style="font-size:22px;">⚔️</span>
+      <span id="notif-ov-title" style="font-family:sans-serif;font-size:16px;font-weight:700;color:#e2e8f4;flex:1;"></span>
+      <button onclick="closeNotifOverlay()" style="background:transparent;border:none;color:#5a7099;font-size:20px;cursor:pointer;line-height:1;">✕</button>
+    </div>
+    <div id="notif-ov-body" style="font-family:sans-serif;font-size:14px;color:#8097b8;line-height:1.5;"></div>
+  </div>
+</div>
 <iframe id="frame" onload="document.getElementById('loading').style.display='none'"></iframe>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -119,11 +129,30 @@ if (isIOS && !isStandalone && !hidePrompt) {
     }
 
     messaging.onMessage(function(payload) {
-      new Notification(payload.notification.title, {
-        body: payload.notification.body,
-        vibrate: [300,100,300]
-      });
-    });
+  showNotifOverlay(payload.notification.title, payload.notification.body);
+  var frame = document.getElementById('frame');
+  if(frame && frame.contentWindow) {
+    frame.contentWindow.postMessage({type:'fcm_notification', title:payload.notification.title, body:payload.notification.body}, '*');
+  }
+});
+
+var _notifTimer = null;
+function showNotifOverlay(title, body) {
+  document.getElementById('notif-ov-title').textContent = title || 'THN Guild';
+  document.getElementById('notif-ov-body').textContent = body || '';
+  var ov = document.getElementById('notif-overlay');
+  var card = document.getElementById('notif-card');
+  ov.style.display = 'block';
+  setTimeout(function(){ card.style.transform = 'translateY(0)'; }, 10);
+  if(_notifTimer) clearTimeout(_notifTimer);
+  _notifTimer = setTimeout(closeNotifOverlay, 6000);
+  if(navigator.vibrate) navigator.vibrate([300,100,300]);
+}
+function closeNotifOverlay() {
+  var card = document.getElementById('notif-card');
+  card.style.transform = 'translateY(-100%)';
+  setTimeout(function(){ document.getElementById('notif-overlay').style.display = 'none'; }, 400);
+}
   }
 }
 </script>
