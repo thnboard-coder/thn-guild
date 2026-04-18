@@ -118,12 +118,18 @@ if (isIOS && !isStandalone && !hidePrompt) {
       navigator.serviceWorker.register('/firebase-messaging-sw.js').then(function(registration) {
         return messaging.getToken({vapidKey: VAPID_KEY, serviceWorkerRegistration: registration});
       }).then(function(token) {
-        if(token) { localStorage.setItem('thn_fcm_token', token); loadFrame(token); }
-        else { loadFrame(''); }
-      }).catch(function(e) {
-        console.error("Token error: ", e);
-        loadFrame('');
-      });
+  if(token) {
+    localStorage.setItem('thn_fcm_token', token);
+    document.title = 'OK:'+token.substring(0,10);
+    loadFrame(token);
+  } else {
+    document.title = 'NO TOKEN';
+    loadFrame('');
+  }
+}).catch(function(e) {
+  document.title = 'ERR:'+e.message;
+  loadFrame('');
+});
     } else {
       loadFrame('');
     }
