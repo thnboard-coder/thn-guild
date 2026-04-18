@@ -103,14 +103,18 @@ if (isIOS && !isStandalone && !hidePrompt) {
       }).then(function(registration) {
         return messaging.getToken({vapidKey: VAPID_KEY, serviceWorkerRegistration: registration});
       }).then(function(token) {
-        if(!token) { loadFrame(''); return; }
-        localStorage.setItem('thn_fcm_token', token);
-        loadFrame(token);
-      }).catch(function(e) {
-        console.error("Token error: ", e);
-        loadFrame('');
-      });
-    };
+  if(token) {
+    localStorage.setItem('thn_fcm_token', token);
+    alert('TOKEN OK: ' + token.substring(0,20));
+    loadFrame(token);
+  } else {
+    alert('NO TOKEN');
+    loadFrame('');
+  }
+}).catch(function(e) {
+  alert('ERROR: ' + e.message);
+  loadFrame('');
+});
 
     if (Notification.permission === 'default') {
       document.getElementById('push-prompt').style.display = 'flex';
