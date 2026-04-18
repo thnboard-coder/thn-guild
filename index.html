@@ -130,14 +130,13 @@ if (isIOS && !isStandalone && !hidePrompt) {
     }
 
     messaging.onMessage(function(payload) {
-      var title = (payload.notification && payload.notification.title) || (payload.data && payload.data.title) || 'THN Guild';
-      var body = (payload.notification && payload.notification.body) || (payload.data && payload.data.body) || '';
-      showNotifOverlay(title, body);
-      var frame = document.getElementById('frame');
-      if(frame && frame.contentWindow) {
-        frame.contentWindow.postMessage({type:'fcm_notification', title:title, body:body}, '*');
-      }
-    });
+  var title = (payload.notification && payload.notification.title) || 'THN Guild';
+  var body = (payload.notification && payload.notification.body) || '';
+  var frame = document.getElementById('frame');
+  if(frame && frame.contentWindow) {
+    frame.contentWindow.postMessage({type:'fcm_notification', title:title, body:body}, '*');
+  }
+});
 
     var _notifTimer = null;
     function showNotifOverlay(title, body) {
