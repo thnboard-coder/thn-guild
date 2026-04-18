@@ -13,12 +13,13 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage(function(payload) {
-  const title = payload.notification.title || 'THN Guild';
-  const body  = payload.notification.body  || '';
-  self.registration.showNotification(title, {
-    body: body,
-    icon: '/icon.png',
-    vibrate: [300,100,300,100,300],
-    requireInteraction: false
-  });
+  const notification = payload.notification || payload.data || {};
+  const title = notification.title || 'THN Guild';
+  const body  = notification.body  || '';
+  return self.registration.showNotification(title, {
+    body: body,
+    icon: '/icon.png',
+    vibrate: [300,100,300,100,300],
+    requireInteraction: false
+  });
 });
