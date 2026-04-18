@@ -89,12 +89,15 @@ if (isIOS && !isStandalone && !hidePrompt) {
       document.getElementById('push-prompt').style.display = 'none';
       Notification.requestPermission().then(function(perm) {
         if(perm !== 'granted') { loadFrame(''); return; }
-        return messaging.getToken({vapidKey: VAPID_KEY});
+        return navigator.serviceWorker.register('/firebase-messaging-sw.js');
+      }).then(function(registration) {
+        return messaging.getToken({vapidKey: VAPID_KEY, serviceWorkerRegistration: registration});
       }).then(function(token) {
         if(!token) { loadFrame(''); return; }
         localStorage.setItem('thn_fcm_token', token);
         loadFrame(token);
       }).catch(function(e) {
+        console.error("Token error: ", e);
         loadFrame('');
       });
     };
@@ -102,10 +105,15 @@ if (isIOS && !isStandalone && !hidePrompt) {
     if (Notification.permission === 'default') {
       document.getElementById('push-prompt').style.display = 'flex';
     } else if (Notification.permission === 'granted') {
-      messaging.getToken({vapidKey: VAPID_KEY}).then(function(token) {
+      navigator.serviceWorker.register('/firebase-messaging-sw.js').then(function(registration) {
+        return messaging.getToken({vapidKey: VAPID_KEY, serviceWorkerRegistration: registration});
+      }).then(function(token) {
         if(token) { localStorage.setItem('thn_fcm_token', token); loadFrame(token); }
         else { loadFrame(''); }
-      }).catch(function(){ loadFrame(''); });
+      }).catch(function(e) {
+        console.error("Token error: ", e);
+        loadFrame('');
+      });
     } else {
       loadFrame('');
     }
